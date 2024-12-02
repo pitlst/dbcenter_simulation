@@ -1,5 +1,8 @@
-from general import metro, stage, transfer_table, FANGAN
-from logger import logger_make
+import numpy as np 
+from general.workshop import metro, stage, transfer_table, FANGAN
+from general.logger import logger_make
+
+SAVE_DATA = []
 
 LOG = logger_make("总成车间")
 
@@ -40,7 +43,7 @@ if __name__ == "__main__":
                 "作业周期":4,
             },
         }
-        移车台 = [transfer_table(str(i) + "号移车台") for i in range(2)]
+        移车台 = [transfer_table(str(i) + "号移车台") for i in range(10)]
 
         进车台位 = [stage("1号", "进车台位", all_config["进车台位"]["作业周期"] * 时间折算标志位)]
         粘接预装台位 = [stage("27号", "粘接预装台位", all_config["粘接预装台位"]["作业周期"] * 时间折算标志位), 
@@ -202,20 +205,27 @@ if __name__ == "__main__":
 
 
             if 时间步骤%48 == 0:
+                temp_save_data = []
                 LOG.info("-" * 40)
+                temp_save_data.append(进车总数 - 昨天进车总数)
                 LOG.info("第" + str(int(时间步骤/48)) + "天一共进车" + str(进车总数 - 昨天进车总数) + "节")
                 昨天进车总数 = 进车总数
+                temp_save_data.append(出车总数 - 昨天出车总数)
                 LOG.info("第" + str(int(时间步骤/48)) + "天一共出车" + str(出车总数 - 昨天出车总数) + "节")
                 昨天出车总数 = 出车总数
                 temp = 0
                 for 单个移车台 in 移车台:
                     temp += int(单个移车台.all_work_count - 单个移车台.last_all_work_count)
+                    temp_save_data.append(int(单个移车台.all_work_count - 单个移车台.last_all_work_count))
                     LOG.info("第" + str(int(时间步骤/48)) + "天" + str(单个移车台.name) + "移动了" + str(int(单个移车台.all_work_count - 单个移车台.last_all_work_count)) + "次")
                     单个移车台.last_all_work_count = 单个移车台.all_work_count
+                temp_save_data.append(temp)
                 LOG.info("第" + str(int(时间步骤/48)) + "天移车台一共移动了" + str(temp) + "次")
                 LOG.info("-" * 40)
+                SAVE_DATA.append(np.array(temp_save_data))
                 # input()
-                
+        temp = np.array(SAVE_DATA)     
+        np.save("temp_data", temp)
     elif FANGAN == 1:
         all_config = {
             "进车台位":{
@@ -260,7 +270,7 @@ if __name__ == "__main__":
             },
         }
         
-        移车台 = [transfer_table(str(i) + "号移车台") for i in range(2)]
+        移车台 = [transfer_table(str(i) + "号移车台") for i in range(10)]
 
         进车台位 = [stage("1号", "进车台位", all_config["进车台位"]["作业周期"] * 时间折算标志位)]
         粘接预装台位_1 = [stage("_27号", "粘接预装台位_1", all_config["粘接预装台位_1"]["作业周期"] * 时间折算标志位)]
@@ -434,16 +444,24 @@ if __name__ == "__main__":
 
 
             if 时间步骤%48 == 0:
+                temp_save_data = []
                 LOG.info("-" * 40)
+                temp_save_data.append(进车总数 - 昨天进车总数)
                 LOG.info("第" + str(int(时间步骤/48)) + "天一共进车" + str(进车总数 - 昨天进车总数) + "节")
                 昨天进车总数 = 进车总数
+                temp_save_data.append(出车总数 - 昨天出车总数)
                 LOG.info("第" + str(int(时间步骤/48)) + "天一共出车" + str(出车总数 - 昨天出车总数) + "节")
                 昨天出车总数 = 出车总数
                 temp = 0
                 for 单个移车台 in 移车台:
                     temp += int(单个移车台.all_work_count - 单个移车台.last_all_work_count)
+                    temp_save_data.append(int(单个移车台.all_work_count - 单个移车台.last_all_work_count))
                     LOG.info("第" + str(int(时间步骤/48)) + "天" + str(单个移车台.name) + "移动了" + str(int(单个移车台.all_work_count - 单个移车台.last_all_work_count)) + "次")
                     单个移车台.last_all_work_count = 单个移车台.all_work_count
+                temp_save_data.append(temp)
                 LOG.info("第" + str(int(时间步骤/48)) + "天移车台一共移动了" + str(temp) + "次")
                 LOG.info("-" * 40)
+                SAVE_DATA.append(np.array(temp_save_data))
             # input()
+        temp = np.array(SAVE_DATA)     
+        np.save("temp_data", temp)

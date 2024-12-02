@@ -43,7 +43,7 @@ if __name__ == "__main__":
                 "作业周期":4,
             },
         }
-        移车台 = [transfer_table(str(i) + "号移车台") for i in range(1)]
+        移车台 = [transfer_table(str(i) + "号移车台") for i in range(10)]
 
         进车台位 = [stage("1号", "进车台位", all_config["进车台位"]["作业周期"] * 时间折算标志位)]
         粘接预装台位 = [stage("27号", "粘接预装台位", all_config["粘接预装台位"]["作业周期"] * 时间折算标志位), 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             # LOG.debug("进车")
             # 每天限制进两台车
             for 台位 in 进车台位:
-                if 台位.input_test() and (进车总数 == 0 or int(时间步骤/进车总数) > 24) and len(进车队列) != 0:
+                if 台位.input_test() and (进车总数 == 0 or int(时间步骤/进车总数) > 16) and len(进车队列) != 0:
                     台位.input(metro(进车总数, 进车队列.pop(0)))
                     进车总数 += 1
 
@@ -331,7 +331,7 @@ if __name__ == "__main__":
             # LOG.debug("进车")
             # 每天限制进两台车
             for 台位 in 进车台位:
-                if 台位.input_test() and (进车总数 == 0 or int(时间步骤/进车总数) > 24) and len(进车队列) != 0:
+                if 台位.input_test() and (进车总数 == 0 or int(时间步骤/进车总数) > 16) and len(进车队列) != 0:
                     台位.input(metro(进车总数, 进车队列.pop(0)))
                     进车总数 += 1
 

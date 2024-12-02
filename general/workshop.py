@@ -1,11 +1,9 @@
 import abc
-from logger import logger_make
+from general.config import FANGAN
+from general.logger import logger_make
 
 # 走一步半小时
 metro_all_type = ["A型车", "B型车"]
-stage_all_type = ["进车台位", "粘接预装台位", "自动化粘接台位", "普通组装1类", "模块化组装台位", "A车组装2类", "BC车组装2类", "落车台位"]
-# 模拟的方案标志位
-FANGAN = 0
 
 # 节车
 class metro:
@@ -116,7 +114,7 @@ class transfer_table(moving_object):
         if FANGAN == 0 :
             max_work_count = 3
         elif FANGAN == 1:
-            if from_stage_name in ["进车台位", "粘接预装台位-1", "粘接预装台位-2", "粘接预装台位-3" ,"自动化粘接台位"]:
+            if from_stage_name in ["进车台位", "粘接预装台位-1", "粘接预装台位-2", "粘接预装台位-3"]:
                 max_work_count = 1
             else:
                 max_work_count = 3
