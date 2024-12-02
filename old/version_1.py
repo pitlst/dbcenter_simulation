@@ -1,6 +1,6 @@
 import numpy as np 
 from general.workshop import metro, stage, transfer_table, FANGAN
-from general.logger import logger_make
+from logger import logger_make
 
 SAVE_DATA = []
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
                 "作业周期":4,
             },
         }
-        移车台 = [transfer_table(str(i) + "号移车台") for i in range(10)]
+        移车台 = [transfer_table(str(i) + "号移车台") for i in range(1)]
 
         进车台位 = [stage("1号", "进车台位", all_config["进车台位"]["作业周期"] * 时间折算标志位)]
         粘接预装台位 = [stage("27号", "粘接预装台位", all_config["粘接预装台位"]["作业周期"] * 时间折算标志位), 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
             },
         }
         
-        移车台 = [transfer_table(str(i) + "号移车台") for i in range(10)]
+        移车台 = [transfer_table(str(i) + "号移车台") for i in range(2)]
 
         进车台位 = [stage("1号", "进车台位", all_config["进车台位"]["作业周期"] * 时间折算标志位)]
         粘接预装台位_1 = [stage("_27号", "粘接预装台位_1", all_config["粘接预装台位_1"]["作业周期"] * 时间折算标志位)]

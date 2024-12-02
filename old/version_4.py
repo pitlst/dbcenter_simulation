@@ -1,6 +1,6 @@
 import numpy as np 
 from general.workshop import metro, stage, transfer_table, FANGAN
-from general.logger import logger_make
+from logger import logger_make
 
 SAVE_DATA = []
 
@@ -270,7 +270,8 @@ if __name__ == "__main__":
             },
         }
         
-        移车台 = [transfer_table(str(i) + "号移车台") for i in range(2)]
+        喷砂房移车台 = [transfer_table("喷砂房移车台") for i in range(1)]
+        总成车间移车台 = [transfer_table("总成车间移车台") for i in range(1)]
 
         进车台位 = [stage("1号", "进车台位", all_config["进车台位"]["作业周期"] * 时间折算标志位)]
         粘接预装台位_1 = [stage("_27号", "粘接预装台位_1", all_config["粘接预装台位_1"]["作业周期"] * 时间折算标志位)]
@@ -339,39 +340,15 @@ if __name__ == "__main__":
             本轮能够从哪个台位移车 = []
             本轮能够移向哪个台位 = []
             # 检查有没有移车台能够移车
-            for 单个移车台 in 移车台:
+            for 单个移车台 in 总成车间移车台:
                 if 单个移车台.input_test():
                     有移车台能够移车 = True
                     break
             
             if 有移车台能够移车:
-                for 台位 in 进车台位 + 粘接预装台位_1 + 粘接预装台位_2 + 粘接预装台位_3 + 自动化粘接台位 + 普通组装1类 + 模块化组装台位 + A车组装2类 + BC车组装2类:
+                for 台位 in 自动化粘接台位 + 普通组装1类 + 模块化组装台位 + A车组装2类 + BC车组装2类:
                     if 台位.output_test() and not 台位 in 本轮能够从哪个台位移车:
-                        if 台位.type == "进车台位":
-                            for 台位_ in 粘接预装台位_1:
-                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
-                                    本轮能够从哪个台位移车.append(台位)
-                                    本轮能够移向哪个台位.append(台位_)
-                                    break
-                        if 台位.type == "粘接预装台位_1":
-                            for 台位_ in 粘接预装台位_2:
-                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
-                                    本轮能够从哪个台位移车.append(台位)
-                                    本轮能够移向哪个台位.append(台位_)
-                                    break
-                        if 台位.type == "粘接预装台位_2":
-                            for 台位_ in 粘接预装台位_3:
-                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
-                                    本轮能够从哪个台位移车.append(台位)
-                                    本轮能够移向哪个台位.append(台位_)
-                                    break
-                        elif 台位.type == "粘接预装台位_3":
-                            for 台位_ in 自动化粘接台位:
-                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
-                                    本轮能够从哪个台位移车.append(台位)
-                                    本轮能够移向哪个台位.append(台位_)
-                                    break
-                        elif 台位.type == "自动化粘接台位":
+                        if 台位.type == "自动化粘接台位":
                             for 台位_ in 普通组装1类:
                                 if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
                                     本轮能够从哪个台位移车.append(台位)
@@ -404,7 +381,7 @@ if __name__ == "__main__":
                                     break
 
                 # 求移车优先级
-                for 单个移车台 in 移车台:
+                for 单个移车台 in 总成车间移车台:
                     if 单个移车台.input_test() and len(本轮能够从哪个台位移车) != 0:
                         本轮准备出车的台位的最大优先级 = -1
                         本轮准备出车的台位的索引 = -1
@@ -419,7 +396,7 @@ if __name__ == "__main__":
                         本轮能够从哪个台位移车.pop(本轮准备出车的台位的索引)
                         本轮能够移向哪个台位.pop(本轮准备出车的台位的索引)
                     
-            for 单个移车台 in 移车台:
+            for 单个移车台 in 总成车间移车台:
                 if 单个移车台.output_test():
                     for 索引, 预定台位的移车台名称 in enumerate(被移车台预定台位对应移车台名称的队列):
                         if 预定台位的移车台名称 == 单个移车台.name:
@@ -427,7 +404,70 @@ if __name__ == "__main__":
                             被移车台预定台位对应移车台名称的队列.pop(索引)
                             被移车台预定台位的队列.pop(索引)
                             break
+
+
+            有移车台能够移车 = False
+            本轮能够从哪个台位移车 = []
+            本轮能够移向哪个台位 = []
+            # 检查有没有移车台能够移车
+            for 单个移车台 in 喷砂房移车台:
+                if 单个移车台.input_test():
+                    有移车台能够移车 = True
+                    break
             
+            if 有移车台能够移车:
+                for 台位 in 进车台位 + 粘接预装台位_1 + 粘接预装台位_2 + 粘接预装台位_3:
+                    if 台位.output_test() and not 台位 in 本轮能够从哪个台位移车:
+                        if 台位.type == "进车台位":
+                            for 台位_ in 粘接预装台位_1:
+                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
+                                    本轮能够从哪个台位移车.append(台位)
+                                    本轮能够移向哪个台位.append(台位_)
+                                    break
+                        if 台位.type == "粘接预装台位_1":
+                            for 台位_ in 粘接预装台位_2:
+                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
+                                    本轮能够从哪个台位移车.append(台位)
+                                    本轮能够移向哪个台位.append(台位_)
+                                    break
+                        if 台位.type == "粘接预装台位_2":
+                            for 台位_ in 粘接预装台位_3:
+                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
+                                    本轮能够从哪个台位移车.append(台位)
+                                    本轮能够移向哪个台位.append(台位_)
+                                    break
+                        elif 台位.type == "粘接预装台位_3":
+                            for 台位_ in 自动化粘接台位:
+                                if 台位_.input_test() and not 台位_ in 本轮能够移向哪个台位 and not 台位_ in 被移车台预定台位的队列:
+                                    本轮能够从哪个台位移车.append(台位)
+                                    本轮能够移向哪个台位.append(台位_)
+                                    break
+
+                # 求移车优先级
+                for 单个移车台 in 喷砂房移车台:
+                    if 单个移车台.input_test() and len(本轮能够从哪个台位移车) != 0:
+                        本轮准备出车的台位的最大优先级 = -1
+                        本轮准备出车的台位的索引 = -1
+                        for 索引 in range(len(本轮能够从哪个台位移车)):
+                            if 本轮能够从哪个台位移车[索引].metro.work_count >= 本轮准备出车的台位的最大优先级:
+                                本轮准备出车的台位的最大优先级 = 本轮能够从哪个台位移车[索引].metro.work_count
+                                本轮准备出车的台位的索引 = 本轮准备出车的台位的索引
+                        print(本轮能够从哪个台位移车[本轮准备出车的台位的索引].type + 本轮能够从哪个台位移车[本轮准备出车的台位的索引].name + "到" + 本轮能够移向哪个台位[本轮准备出车的台位的索引].type + 本轮能够移向哪个台位[本轮准备出车的台位的索引].name + "由" + 单个移车台.name)
+                        单个移车台.input(本轮能够从哪个台位移车[本轮准备出车的台位的索引].output(), 本轮能够从哪个台位移车[本轮准备出车的台位的索引].type)
+                        被移车台预定台位的队列.append(本轮能够移向哪个台位[本轮准备出车的台位的索引])
+                        被移车台预定台位对应移车台名称的队列.append(单个移车台.name)
+                        本轮能够从哪个台位移车.pop(本轮准备出车的台位的索引)
+                        本轮能够移向哪个台位.pop(本轮准备出车的台位的索引)
+                    
+            for 单个移车台 in 喷砂房移车台:
+                if 单个移车台.output_test():
+                    for 索引, 预定台位的移车台名称 in enumerate(被移车台预定台位对应移车台名称的队列):
+                        if 预定台位的移车台名称 == 单个移车台.name:
+                            被移车台预定台位的队列[索引].input(单个移车台.output(被移车台预定台位的队列[索引].name))
+                            被移车台预定台位对应移车台名称的队列.pop(索引)
+                            被移车台预定台位的队列.pop(索引)
+                            break
+
             # LOG.debug("落车")     
             for 台位 in 落车台位:
                 if 台位.output_test():
@@ -435,11 +475,11 @@ if __name__ == "__main__":
                     LOG.info(str(已完工的车.index) + "号" + 已完工的车.type + "已经落车，在总成车间内呆了" + str(已完工的车.work_count / 6) + "小时的上班时间")
                     出车总数 += 1
             
-            for 能动的 in 进车台位 + 粘接预装台位_1 + 粘接预装台位_2 + 粘接预装台位_3 + 自动化粘接台位 + 普通组装1类 + 模块化组装台位 + A车组装2类 + BC车组装2类 + 落车台位 + 移车台:
+            for 能动的 in 进车台位 + 粘接预装台位_1 + 粘接预装台位_2 + 粘接预装台位_3 + 自动化粘接台位 + 普通组装1类 + 模块化组装台位 + A车组装2类 + BC车组装2类 + 落车台位 + 喷砂房移车台 + 总成车间移车台:
                 能动的.log_status()   
             
             # LOG.debug("所有台位和移车台工作一次")
-            for 能动的 in 进车台位 + 粘接预装台位_1 + 粘接预装台位_2 + 粘接预装台位_3 + 自动化粘接台位 + 普通组装1类 + 模块化组装台位 + A车组装2类 + BC车组装2类 + 落车台位 + 移车台:
+            for 能动的 in 进车台位 + 粘接预装台位_1 + 粘接预装台位_2 + 粘接预装台位_3 + 自动化粘接台位 + 普通组装1类 + 模块化组装台位 + A车组装2类 + BC车组装2类 + 落车台位 + 喷砂房移车台 + 总成车间移车台:
                 能动的.work()      
 
 
@@ -453,7 +493,7 @@ if __name__ == "__main__":
                 LOG.info("第" + str(int(时间步骤/48)) + "天一共出车" + str(出车总数 - 昨天出车总数) + "节")
                 昨天出车总数 = 出车总数
                 temp = 0
-                for 单个移车台 in 移车台:
+                for 单个移车台 in 总成车间移车台 + 喷砂房移车台:
                     temp += int(单个移车台.all_work_count - 单个移车台.last_all_work_count)
                     temp_save_data.append(int(单个移车台.all_work_count - 单个移车台.last_all_work_count))
                     LOG.info("第" + str(int(时间步骤/48)) + "天" + str(单个移车台.name) + "移动了" + str(int(单个移车台.all_work_count - 单个移车台.last_all_work_count)) + "次")
