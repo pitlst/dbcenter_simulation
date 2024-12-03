@@ -1,6 +1,6 @@
 import numpy as np 
 from general.workshop import metro, stage, transfer_table, FANGAN
-from logger import logger_make
+from utils.logger import logger_make
 
 SAVE_DATA = []
 

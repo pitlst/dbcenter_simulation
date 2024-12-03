@@ -1,6 +1,6 @@
 import abc
 from general.config import FANGAN
-from logger import logger_make
+from utils.logger import logger_make
 
 # 走一步半小时
 metro_all_type = ["A型车", "B型车"]

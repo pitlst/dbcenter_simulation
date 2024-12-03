@@ -1,5 +1,4 @@
-from logger import logger_make
-from config import ALL_STAGE
+from utils.logger import logger_make
 
 class metro:
     '''对每一节车的抽象'''
