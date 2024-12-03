@@ -28,6 +28,8 @@ class can_save_metro_object:
     def work(self) -> None:
         '''工作一次'''
         self.work_count += 1 
+        if not self.metro is None:
+            self.metro.work()
         
     def can_input(self) -> bool:
         '''测试是否可以进车'''
@@ -37,15 +39,24 @@ class can_save_metro_object:
         '''测试是否可以落车'''
         return not self.metro is None and self.work_count >= self.max_work_count
     
-    def __lshift__(self, metro_: tuple):
+    def get_status(self) -> str:
+        '''获取当前状态'''
+        if self.can_input():
+            return "未在工作"
+        elif self.can_output():
+            return "工作已完成但是车未移走"
+        else:
+            return "正在工作......"
+    
+    def input(self, metro_: metro, max_work_count: int):
         '''进车'''
         assert self.can_input(), "不能进车时进车"
-        self.metro = metro_[0]
-        self.max_work_count = metro_[1]
+        self.metro = metro_
+        self.max_work_count = max_work_count
         self.work_count = 0
         return self
     
-    def __rshift__(self) -> metro:
+    def output(self) -> metro:
         '''落车'''
         assert self.can_output(), "不能落车时落车"
         temp = self.metro
@@ -57,25 +68,49 @@ class can_save_metro_object:
 
 class stage(can_save_metro_object):
     '''台位的抽象'''
-    def __init__(self, name: str, type_name: str, max_stage_count: int):
+    def __init__(self, name_: str, type_: str, max_stage_count: int):
         super().__init__()
-        assert type_name in [""], "不允许的台位类型"
-        self.name: str = name
-        self.type: str = type_name
+        self.name: str = name_
+        self.type: str = type_
         self.max_stage_count: int = max_stage_count
-        self.LOG = logger_make(self.type + self.name)
+        self.LOG = logger_make(self.type + self.name + "号")
     
     def log_status(self) -> None:
-        if self.metro is None:
+        if self.can_input():
             self.LOG.debug("未在工作")
-        elif self.work_count < self.max_stage_count:
-            self.LOG.debug("正在工作......")
-        else:
+        elif self.can_output():
             self.LOG.warning("工作已完成但是车未移走")
+        else:
+            self.LOG.debug("正在工作......")
     
-    def __lshift__(self, metro_: metro):
+    def input(self, metro_: metro):
         self.LOG.debug("进了" + metro_.type + "的" + str(metro_.index) + "号")
-        super().__lshift__(metro_, self.max_stage_count)
+        super().input(metro_, self.max_stage_count)
+        return self
+        
+    def output(self) -> metro:
+        self.LOG.debug("出了" + self.metro.type + "的" + str(self.metro.index) + "号")
+        return super().output()
+    
+    
+class transfer_table(can_save_metro_object):
+    '''移车台的抽象'''
+    def __init__(self, name_: str):
+        super().__init__()
+        self.name: str = name_
+        self.LOG = logger_make("移车台" + self.name + "号")
+        
+    def log_status(self) -> None:
+        if self.can_input():
+            self.LOG.debug("未在工作")
+        elif self.can_output():
+            self.LOG.warning("工作已完成但是车未移走")
+        else:
+            self.LOG.debug("正在工作......")
+            
+    def input(self, metro_: metro, max_work_count: int):
+        self.LOG.debug("进了" + metro_.type + "的" + str(metro_.index) + "号")
+        super().input(metro_, max_work_count)
         return self
         
     def output(self) -> metro:
