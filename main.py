@@ -13,7 +13,7 @@ if __name__ == "__main__":
     #     STATIONS_SERVICED_BY_TRANSFER_VANS = STATIONS_SERVICED_BY_TRANSFER_VANS,
     #     ALL_STAGE_CONFIG = ALL_STAGE_CONFIG
     # )
-    from simulation.program_6 import *
+    from simulation.program_1 import *
     transit_logic(
         USE_OF_THE_BLASTING_ROOM = USE_OF_THE_BLASTING_ROOM,
         NUMBER_OF_METRO_DROP_OFF = NUMBER_OF_METRO_DROP_OFF,

@@ -1,5 +1,8 @@
+import pandas as pd
+import numpy as np
+import os
 from utils.logger import logger_make
-from utils.workspace import metro, stage, transfer_table
+from utils.workspace import metro, stage, transfer_table, can_save_metro_object
 
 # 每循环并计数一次代表10分钟
 time_step_factor = 10
@@ -46,6 +49,14 @@ def find_index(input_list: list, request_ch) -> int:
     for i, ch in enumerate(input_list):
         if ch == request_ch:
             return i
+        
+def get_platform_name(_platform: can_save_metro_object) -> str:
+    '''获取名称'''
+    if isinstance(_platform, stage):
+        return _platform.type + _platform.name  + "号"
+    elif isinstance(_platform, transfer_table):
+        return _platform.name  + "号"
+    return None
 
 def transit_logic(
     USE_OF_THE_BLASTING_ROOM: bool,
@@ -83,6 +94,11 @@ def transit_logic(
     '''每一个移车台的移动计数'''
     total_moving_vehicles_platform_removw_index = [0] * len(moving_vehicles_platform)
     lastday_moving_vehicles_platform_removw_index = [0] * len(moving_vehicles_platform)
+    '''所有异常的记录'''
+    error_record = []
+    error_record_temp = []
+    '''要记录并保存的数据'''
+    save_data = []
     
     
     # 开始模拟
@@ -91,7 +107,7 @@ def transit_logic(
         
         TIME_LOG.debug("-" * 20 + "开始进车" + "-" * 20 )
         for platform_ in platform_list:
-            if platform_.type == "进车台位" and platform_.can_input() and len(APPROACH_QUEUE) != 0 and time_step * time_step_factor % work_time % int(work_time / NUMBER_OF_INCOMING_VEHICLES_PER_DAY) == 0:
+            if platform_.type == "进车台位" and platform_.can_input() and len(APPROACH_QUEUE) != 0 and time_step * time_step_factor % work_time in [0, int(work_time / NUMBER_OF_INCOMING_VEHICLES_PER_DAY)]:
                 platform_.input(metro(total_number_of_incoming_vehicles, APPROACH_QUEUE.pop(0)))
                 total_number_of_incoming_vehicles += 1
                 STATE_LOG.debug(platform_.name + "号" + platform_.type + "进了" + str(platform_.metro.index) + "号" + platform_.metro.type + "型车")
@@ -102,6 +118,7 @@ def transit_logic(
         platform_from = []
         '''本轮准备移到这些台位'''
         platform_to = []
+        
         for moving_vehicles in moving_vehicles_platform:
             if moving_vehicles.can_input():
                 can_move = True
@@ -122,8 +139,9 @@ def transit_logic(
                         index_ = get_max_metro_with_filter(platform_from, temp_platform_from_index)
                         # 确定有对应的台位
                         if index_ != -1:
-                            print(platform_from[index_].type + platform_from[index_].name + "号到" + platform_to[index_].type + platform_to[index_].name + "号由" + mv_platform.name + "号移车台移动")
+                            # print(platform_from[index_].type + platform_from[index_].name + "号到" + platform_to[index_].type + platform_to[index_].name + "号由" + mv_platform.name + "号移车台移动")
                             mv_platform.input(platform_from[index_].output(), get_trans_time(ALL_STAGE_CONFIG, platform_from[index_].name))
+                            total_moving_vehicles_platform_removw_index[mv_index] += 1
                             # 预定将要驶入的台位和正在转运的车
                             reservations_list.append(platform_to[index_])
                             reservations_moving_vehicles_list.append(mv_platform.name)
@@ -140,12 +158,13 @@ def transit_logic(
                                 platform_to.append(platform__)
                                 break
                 # 求移车优先级
-                for mv_platform in moving_vehicles_platform:
+                for mv_index, mv_platform in enumerate(moving_vehicles_platform):
                     if mv_platform.can_input() and len(platform_from) != 0:
                         index_ = get_max_metro(platform_from)
-                        print(platform_from[index_].type + platform_from[index_].name + "号到" + platform_to[index_].type + platform_to[index_].name + "号由" + mv_platform.name + "号移车台移动")
+                        # print(platform_from[index_].type + platform_from[index_].name + "号到" + platform_to[index_].type + platform_to[index_].name + "号由" + mv_platform.name + "号移车台移动")
                         # 移车
                         mv_platform.input(platform_from[index_].output(), get_trans_time(ALL_STAGE_CONFIG, platform_from[index_].name))
+                        total_moving_vehicles_platform_removw_index[mv_index] += 1
                         # 预定将要驶入的台位和正在转运的车
                         reservations_list.append(platform_to[index_])
                         reservations_moving_vehicles_list.append(mv_platform.name)
@@ -160,7 +179,6 @@ def transit_logic(
                 index_ = find_index(reservations_moving_vehicles_list, mv_platform.name)
                 if index_ != -1:
                     reservations_list[index_].input(mv_platform.output())
-                    total_moving_vehicles_platform_removw_index[mv_index] += 1
                     reservations_moving_vehicles_list.pop(index_)
                     reservations_list.pop(index_)
                     
@@ -174,25 +192,50 @@ def transit_logic(
         TIME_LOG.debug("-" * 20 + "打印各个单位状态" + "-" * 20)
         for platform_ in platform_list + moving_vehicles_platform:
             platform_.log_status()
+            if platform_.get_status() == "工作已完成但是车未移走":
+                if len(error_record_temp) == 0 or get_platform_name(platform_) not in [ch[0] for ch in error_record_temp]:
+                    error_record_temp.append([get_platform_name(platform_), time_step])
+            else:
+                for ch in error_record_temp:
+                    if ch[0] == get_platform_name(platform_):
+                        error_record.append(ch + [time_step])
+                        error_record_temp.remove(ch)
+                        break
             
         TIME_LOG.debug("-" * 20 + "开始工作" + "-" * 20)
         for platform_ in platform_list + moving_vehicles_platform:
             platform_.work()
-            
+        
+        time_step += 1
         if time_step != 0  and time_step % (work_time / time_step_factor) == 0:
+            temp_data = []
             TIME_LOG.debug("-" * 20 + "打印当天状态" + "-" * 20)
             STATE_LOG.info("-" * 40)
-            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time) + 1) + "天一共进车" + str(total_number_of_incoming_vehicles - lastday_number_of_incoming_vehicles) + "节")
-            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time) + 1) + "天一共进车" + str(total_number_of_vehicles_dropped - lastday_number_of_vehicles_dropped) + "节")
+            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天一共进车" + str(total_number_of_incoming_vehicles - lastday_number_of_incoming_vehicles) + "节")
+            temp_data.append(total_number_of_incoming_vehicles - lastday_number_of_incoming_vehicles)
+            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天一共落车" + str(total_number_of_vehicles_dropped - lastday_number_of_vehicles_dropped) + "节")
+            temp_data.append(total_number_of_vehicles_dropped - lastday_number_of_vehicles_dropped)
             lastday_number_of_incoming_vehicles = total_number_of_incoming_vehicles
             lastday_number_of_vehicles_dropped = total_number_of_vehicles_dropped
             temp_sum = 0
             for mv_index, mv_platform in enumerate(moving_vehicles_platform):
-                STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time) + 1) + "天" + str(mv_platform.name) + "号移车台移动了" + str(int(total_moving_vehicles_platform_removw_index[mv_index] - lastday_moving_vehicles_platform_removw_index[mv_index])) + "次")
+                STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天" + str(mv_platform.name) + "号移车台移动了" + str(int(total_moving_vehicles_platform_removw_index[mv_index] - lastday_moving_vehicles_platform_removw_index[mv_index])) + "次")
                 temp_sum += int(total_moving_vehicles_platform_removw_index[mv_index] - lastday_moving_vehicles_platform_removw_index[mv_index])
                 lastday_moving_vehicles_platform_removw_index[mv_index] = total_moving_vehicles_platform_removw_index[mv_index]
-            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time) + 1) + "天移车台一共移动了" + str(temp_sum) + "次")
+            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天移车台一共移动了" + str(temp_sum) + "次")
+            temp_data.append(temp_sum)
+            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天时一共有" + str(len(error_record_temp)) + "个异常正在发生")
+            for error_ in error_record_temp:
+                STATE_LOG.info("由" + error_[0] + "引发在第" + str(int(error_[1] * time_step_factor / work_time) + 1) + "天 " + str(int(error_[1] * time_step_factor % work_time / 60)) + " 时 " + str(int(error_[1] * time_step_factor % work_time % 60)) + " 分")
             STATE_LOG.info("-" * 40)
+            
+            save_data.append(temp_data)
+            
             # input()
-        time_step += 1
+        
+
+    np.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "analyze", "temp.npy"), save_data)
+    for ch in error_record_temp:
+        error_record.append(ch + [time_step])
+    pd.DataFrame(error_record, columns=["task", "start", "end"]).to_csv(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "analyze", "error.csv"))
         
