@@ -97,6 +97,8 @@ def transit_logic(
     '''所有异常的记录'''
     error_record = []
     error_record_temp = []
+    error_day_count = 0
+    error_platform_count = 0
     '''要记录并保存的数据'''
     save_data = []
     
@@ -193,7 +195,9 @@ def transit_logic(
         for platform_ in platform_list + moving_vehicles_platform:
             platform_.log_status()
             if platform_.get_status() == "工作已完成但是车未移走":
+                error_day_count += 1
                 if len(error_record_temp) == 0 or get_platform_name(platform_) not in [ch[0] for ch in error_record_temp]:
+                    error_platform_count += 1
                     error_record_temp.append([get_platform_name(platform_), time_step])
             else:
                 for ch in error_record_temp:
@@ -224,6 +228,12 @@ def transit_logic(
                 lastday_moving_vehicles_platform_removw_index[mv_index] = total_moving_vehicles_platform_removw_index[mv_index]
             STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天移车台一共移动了" + str(temp_sum) + "次")
             temp_data.append(temp_sum)
+            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天时一共发生了" + str(error_platform_count) + "个异常")
+            temp_data.append(error_platform_count)
+            error_platform_count = 0
+            STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天时一共发生" + str(error_day_count * 10) + "分钟的异常")
+            temp_data.append(error_day_count)
+            error_day_count = 0
             STATE_LOG.info("第" + str(int(time_step * time_step_factor / work_time)) + "天时一共有" + str(len(error_record_temp)) + "个异常正在发生")
             for error_ in error_record_temp:
                 STATE_LOG.info("由" + error_[0] + "引发在第" + str(int(error_[1] * time_step_factor / work_time) + 1) + "天 " + str(int(error_[1] * time_step_factor % work_time / 60)) + " 时 " + str(int(error_[1] * time_step_factor % work_time % 60)) + " 分")
