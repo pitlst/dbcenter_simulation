@@ -248,4 +248,3 @@ def transit_logic(
     for ch in error_record_temp:
         error_record.append(ch + [time_step])
     pd.DataFrame(error_record, columns=["task", "start", "end"]).to_csv(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "analyze", "error.csv"))
-        
