@@ -1,3 +1,7 @@
+# 每次循环步进多少分钟
+TIME_STEP = 10
+# 每天的工作时长（分钟）
+DAY_WORK_TIME = 8 * 60
 # 是否使用喷砂间
 USE_OF_THE_BLASTING_ROOM = False
 # 落车数量

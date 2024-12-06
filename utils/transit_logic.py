@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 from utils.logger import logger_make
-from utils.workspace import metro, stage, transfer_table, can_save_metro_object
+from utils.environment import metro, stage, transfer_table, can_save_metro_object
 
 # 每循环并计数一次代表10分钟
 time_step_factor = 10
