@@ -1,8 +1,8 @@
+import os
 import datetime
-from queue import Queue
-
+import numpy as np
+import pandas as pd
 from utils.logger import logger_make
-
 
 class metro:
     '''对每一节车的抽象'''
@@ -108,7 +108,7 @@ class transfer_table(can_save_metro_object):
         # 移车台编号
         self.name: str = name_
         # 允许的转运台位类型
-        self.can_remove_stage_type: list = can_remove_stage_type
+        self.can_remove_stage_type: list[str] = can_remove_stage_type
             
     def get_name(self) -> str:
         '''获取完整名称'''
@@ -235,14 +235,12 @@ class environment:
                     )
                 ) 
                 
-    def work(self):
-        '''全体工作一次'''
-        for platform_ in self.platform_list + self.moving_vehicles_platform:
-            platform_.work()
-        
     def lapse(self):
         '''时间流逝一次'''
-        self.time_count += 1        
+        self.time_count += 1      
+        '''全体工作一次'''
+        for platform_ in self.platform_list + self.moving_vehicles_platform:
+            platform_.work()  
 
     def get_platform_with_name(self, platform_name: str) -> stage:
         '''返回指定名称的台位或移车台'''
@@ -250,30 +248,38 @@ class environment:
             if platform_.get_name() == platform_name:
                 return platform_
 
-    def get_stage_with_type(self, platform_type) -> list[stage]:
+    def get_stage_with_type(self, platform_type: str) -> list[stage]:
         '''返回指定类型的台位'''
         temp_stage: list[stage] = []
         for stage_ in self.platform_list:
-            if stage_.type == platform_type:
+            if stage_.type in platform_type:
                 temp_stage.append(stage_)
         return temp_stage
                 
-    def get_input_metro(self, time_step: int) -> metro|None:
+    def get_input_metro(self, time_step: int = -1) -> metro|None:
         '''获取进车的车'''
+        if time_step == -1:
+            time_step = self.time_count
         if len(self.approach_queue) == 0 or self.approach_queue[0][0] > time_step:
             return None
         return self.approach_queue.pop(0)[1]
         
-    def get_real_days(self, time_step: int) -> int:
+    def get_real_days(self, time_step: int = -1) -> int:
         '''获取对应循环次数的天数'''
+        if time_step == -1:
+            time_step = self.time_count
         return int(time_step * self.TIME_STEP / self.DAY_WORK_TIME)
     
-    def get_real_hours(self, time_step: int) -> int:
+    def get_real_hours(self, time_step: int = -1) -> int:
         '''获取对应循环次数当天的小时数'''
+        if time_step == -1:
+            time_step = self.time_count
         return int(time_step * self.TIME_STEP % self.DAY_WORK_TIME / 60)
     
-    def get_real_minutes(self, time_step: int) -> int:
+    def get_real_minutes(self, time_step: int = -1) -> int:
         '''获取对应循环次数当天的小时数'''
+        if time_step == -1:
+            time_step = self.time_count
         return int(time_step * self.TIME_STEP % self.DAY_WORK_TIME % 60)
     
     def get_trans_time(self, temp_key: str) -> int:
@@ -283,65 +289,133 @@ class environment:
                 if ch_["台位号"] == temp_key:
                     return ch_["转运时长"] / self.TIME_STEP
     
-    @staticmethod
-    def get_max_metro(platform_list: list[stage]) -> int:
-        '''寻找输入台位中拥有等待时间最长的车的索引'''
+    def get_max_wait_metro(self) -> stage|None:
+        '''寻找所有可以出车的台位中拥有等待时间最长的车的台位'''
         temp_index = -1
         temp_prioritization = -1
-        for index_, platform_ in enumerate(platform_list):
-            if not platform_.metro is None and temp_prioritization < platform_.metro.work_count:
+        for index_, platform_ in enumerate(self.platform_list):
+            if platform_.can_output() and temp_prioritization < platform_.metro.work_count:
                 temp_index = index_
                 temp_prioritization = platform_.metro.work_count
-        return temp_index
-    
-    @staticmethod
-    def get_max_metro_with_filter(platform_list: list[stage], filter_list: list[str]) -> int:
-        '''寻找输入台位中拥有等待时间最长的车的索引,带上筛选'''
-        temp_index = -1
-        temp_prioritization = -1
-        for index_, platform_ in enumerate(platform_list):
-            if not platform_.metro is None and index_ in filter_list and temp_prioritization < platform_.metro.work_count:
-                temp_index = index_
-                temp_prioritization = platform_.metro.work_count
-        return temp_index
-    
+        if temp_index == -1:
+            return None
+        return self.platform_list[temp_index]
 
+    def get_max_wait_metro_with_filter(self, filter_list: list[str]) -> stage|None:
+        '''寻找在筛选的类别中可以出车的台位中拥有等待时间最长的车的台位'''
+        temp_index = -1
+        temp_prioritization = -1
+        for index_, platform_ in enumerate(self.platform_list):
+            if platform_.can_output() and platform_.type in filter_list and temp_prioritization < platform_.metro.work_count:
+                temp_index = index_
+                temp_prioritization = platform_.metro.work_count
+        if temp_index == -1:
+            return None
+        return self.platform_list[temp_index]
+    
+    def get_mv_platform_index(self, platform_: transfer_table) -> int:
+        '''给定移车台返回索引'''
+        for index_, platform__ in enumerate(self.moving_vehicles_platform):
+            if platform__.get_name() == platform_.get_name():
+                return index_
     
 class data_record:
     '''数据记录与打印'''
-    def __init__(self, program_index: int):
-        self.LOG = logger_make("方案" + str(program_index) + "试验记录，时间" + datetime.datetime.now().strftime("%Y-%m-%d=%H:%M:%S"))
-        # 进车
-        self.number_of_incoming_vehicles = []
-        # 落车
-        self.number_of_vehicles_dropped = []
-        # 移车台移车相关
-        self.moving_vehicles_platform_count = []
-        # 异常
-        self.error_record = []
-        # 当前落车
+    def __init__(self, m_environment: environment):
+        self.name = "方案" + str(m_environment.program_index) + "试验记录" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        self.LOG = logger_make(self.name)
+        '''进车总数'''
+        self.total_number_of_incoming_vehicles = 0
+        self.lastday_number_of_incoming_vehicles = 0
+        '''落车总数'''
         self.total_number_of_vehicles_dropped = 0
+        self.lastday_number_of_vehicles_dropped = 0
+        '''每一个移车台的移动计数'''
+        self.total_moving_vehicles_platform_removw_index = [0] * len(m_environment.moving_vehicles_platform)
+        self.lastday_moving_vehicles_platform_removw_index = [0] * len(m_environment.moving_vehicles_platform)
+        '''所有异常的记录'''
+        self.error_record = []
+        self.error_record_temp = []
+        self.error_day_count = 0
+        self.error_platform_count = 0
+        '''要记录并保存的数据'''
+        self.save_data_ = []
         
+    def save_data(self, m_environment: environment) -> None:
+        np.save(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "data", self.name + ".npy"), self.save_data_)
+        for ch in self.error_record_temp:
+            self.error_record.append(ch + [m_environment.time_count])
+        pd.DataFrame(self.error_record, columns=["task", "start", "end"]).to_csv(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "data", self.name + "-error.csv"))
+
+    def event_start(self, m_environment: environment) -> None:
+        '''触发循环的开始，更新数据'''
+        self.LOG.debug("-" * 20 + "第" + str(m_environment.get_real_days() + 1) + "天 " + str(m_environment.get_real_hours()) + " 时 " + str(m_environment.get_real_minutes()) + " 分" + "-" * 20)
+          
     def event_input(self, m_environment: environment) -> None:
         '''触发进车，更新数据'''
-        ...
+        for platform_ in m_environment.platform_list:
+            if platform_.type == "进车台位" and platform_.work_count == 0 and not platform_.metro is None:
+                self.LOG.debug(platform_.name + "号" + platform_.type + "进了" + str(platform_.metro.index) + "号" + platform_.metro.type + "型车")
+                self.total_number_of_incoming_vehicles += 1
         
     def event_output(self, m_environment: environment, output_metro: metro) -> None:
         '''触发落车，更新数据'''
-        ...
+        self.LOG.info(str(output_metro.index) + "号" + output_metro.type + "型车已经落车，在车间中呆了" + str(output_metro.work_count * m_environment.TIME_STEP / 60) + "小时的上班时间")
+        self.total_number_of_vehicles_dropped += 1
         
-    def event_mv_input(self, m_environment: environment) -> None:
+    def event_mv_input(self, m_environment: environment, output_platform: stage, input_platform: transfer_table) -> None:
         '''触发移车台进车，更新数据'''
-        ...
+        self.LOG.debug(input_platform.get_name() + "从" + output_platform.get_name() + "进了" + str(input_platform.metro.index) + "号" + input_platform.metro.type + "型车")
+        self.total_moving_vehicles_platform_removw_index[m_environment.get_mv_platform_index(input_platform)] += 1
         
-    def event_mv_output(self, m_environment: environment) -> None:
+    def event_mv_output(self, m_environment: environment, output_platform: transfer_table, input_platform: stage) -> None:
         '''触发移车台落车，更新数据'''
-        ...
+        self.LOG.debug(input_platform.get_name() + "从" + output_platform.get_name() + "进了" + str(input_platform.metro.index) + "号" + input_platform.metro.type + "型车")
+        self.total_moving_vehicles_platform_removw_index[m_environment.get_mv_platform_index(output_platform)] += 1
 
     def event_work(self, m_environment: environment) -> None:
         '''触发工作，更新数据'''
-        ...
-        
-    def event_step(self, m_environment: environment) -> None:
-        '''触发时间步进，更新数据'''
-        ...
+        for platform_ in m_environment.platform_list + m_environment.moving_vehicles_platform:
+            temp_str = platform_.get_status()
+            if temp_str != "工作已完成但是车未移走":
+                self.LOG.debug(platform_.get_name() + ":" + temp_str)
+                for ch in self.error_record_temp:
+                    if ch[0] == platform_.get_name():
+                        self.error_record.append(ch + [m_environment.time_count])
+                        self.error_record_temp.remove(ch)
+                        break
+            else:
+                self.LOG.warning(platform_.get_name() + ":" + temp_str)
+                self.error_day_count += 1
+                if len(self.error_record_temp) == 0 or platform_.get_name() not in [ch[0] for ch in self.error_record_temp]:
+                    self.error_platform_count += 1
+                    self.error_record_temp.append([platform_.get_name(), m_environment.time_count])
+        # 检测到过了新的一天         
+        if m_environment.get_real_days() != 0 and m_environment.get_real_hours() == 0 and m_environment.get_real_minutes() == 0:
+            temp_data = []
+            self.LOG.debug("-" * 20 + "打印当天状态" + "-" * 20)
+            self.LOG.info("-" * 40)
+            self.LOG.info("第" + str(m_environment.get_real_days()) + "天一共进车" + str(self.total_number_of_incoming_vehicles - self.lastday_number_of_incoming_vehicles) + "节")
+            temp_data.append(self.total_number_of_incoming_vehicles - self.lastday_number_of_incoming_vehicles)
+            self.LOG.info("第" + str(m_environment.get_real_days()) + "天一共落车" + str(self.total_number_of_vehicles_dropped - self.lastday_number_of_vehicles_dropped) + "节")
+            temp_data.append(self.total_number_of_vehicles_dropped - self.lastday_number_of_vehicles_dropped)
+            self.lastday_number_of_incoming_vehicles = self.total_number_of_incoming_vehicles
+            self.lastday_number_of_vehicles_dropped = self.total_number_of_vehicles_dropped
+            temp_sum = 0
+            for mv_index, mv_platform in enumerate(m_environment.moving_vehicles_platform):
+                self.LOG.info("第" + str(m_environment.get_real_days()) + "天" + str(mv_platform.name) + "号移车台移动了" + str(int(self.total_moving_vehicles_platform_removw_index[mv_index] - self.lastday_moving_vehicles_platform_removw_index[mv_index])) + "次")
+                temp_sum += int(self.total_moving_vehicles_platform_removw_index[mv_index] - self.lastday_moving_vehicles_platform_removw_index[mv_index])
+                self.lastday_moving_vehicles_platform_removw_index[mv_index] = self.total_moving_vehicles_platform_removw_index[mv_index]
+            self.LOG.info("第" + str(m_environment.get_real_days()) + "天移车台一共移动了" + str(temp_sum) + "次")
+            temp_data.append(temp_sum)
+            self.LOG.info("第" + str(m_environment.get_real_days()) + "天时一共发生了" + str(self.error_platform_count) + "个异常")
+            temp_data.append(self.error_platform_count)
+            self.error_platform_count = 0
+            self.LOG.info("第" + str(m_environment.get_real_days()) + "天时一共发生" + str(self.error_day_count * 10) + "分钟的异常")
+            temp_data.append(self.error_day_count)
+            self.error_day_count = 0
+            self.LOG.info("第" + str(m_environment.get_real_days()) + "天时一共有" + str(len(self.error_record_temp)) + "个异常正在发生")
+            for error_ in self.error_record_temp:
+                self.LOG.info("由" + error_[0] + "引发在第" + str(m_environment.get_real_days(error_[1]) + 1) + "天 " + str(m_environment.get_real_hours(error_[1])) + " 时 " + str(m_environment.get_real_minutes(error_[1])) + " 分")
+            self.LOG.info("-" * 40)
+            self.save_data_.append(temp_data)
