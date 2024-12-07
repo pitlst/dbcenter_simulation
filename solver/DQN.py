@@ -10,7 +10,6 @@ EPSILON = 0.9                                   # greedy policy
 GAMMA = 0.9                                     # reward discount
 TARGET_REPLACE_ITER = 100                       # 目标网络更新频率
 MEMORY_CAPACITY = 2000                          # 记忆库容量
-env = gym.make('CartPole-v0').unwrapped         # 使用gym库中的环境：CartPole，且打开封装(若想了解该环境，请自行百度)
 N_ACTIONS = env.action_space.n                  # 杆子动作个数 (2个)
 N_STATES = env.observation_space.shape[0]       # 杆子状态个数 (4个)
 
@@ -31,9 +30,9 @@ class Net(nn.Module):
         # nn.Module的子类函数必须在构造函数中执行父类的构造函数
         super(Net, self).__init__()                                             # 等价与nn.Module.__init__()
 
-        self.fc1 = nn.Linear(N_STATES, 50)                                      # 设置第一个全连接层(输入层到隐藏层): 状态数个神经元到50个神经元
+        self.fc1 = nn.Linear(N_STATES, 100)                                     # 设置第一个全连接层(输入层到隐藏层): 状态数个神经元到100个神经元
         self.fc1.weight.data.normal_(0, 0.1)                                    # 权重初始化 (均值为0，方差为0.1的正态分布)
-        self.out = nn.Linear(50, N_ACTIONS)                                     # 设置第二个全连接层(隐藏层到输出层): 50个神经元到动作数个神经元
+        self.out = nn.Linear(100, N_ACTIONS)                                    # 设置第二个全连接层(隐藏层到输出层): 100个神经元到动作数个神经元
         self.out.weight.data.normal_(0, 0.1)                                    # 权重初始化 (均值为0，方差为0.1的正态分布)
 
     def forward(self, x):                                                       # 定义forward函数 (x为状态)
