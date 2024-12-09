@@ -46,6 +46,7 @@ def simulation(progame_index: int):
                             m_record.event_mv_input(m_environment, temp_stage, platform_)
                             break    
         # 开始时间流逝
-        m_environment.lapse()
         m_record.event_work(m_environment)
+        m_environment.lapse()
+        
     m_record.save_data(m_environment)

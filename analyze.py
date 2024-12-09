@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 matplotlib.rcParams['font.family'] = 'SimHei'  # 或其他支持中文的字体
 matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号'-'显示为方块的问题
 
-temp_data = np.array(np.load(r"F:\\dbcenter_simulation\\analyze\\temp.npy"))
+temp_data = np.array(np.load(r"D:\OneDrive\工作资料\00 信息组工作\2024-12-02 模拟生产线\dbcenter_simulation\data\方案5试验记录2024-12-09-13-41-11.npy"))
 
 # print(temp_data[:100 ,3])
 # print(temp_data[:100 ,3])
@@ -22,7 +22,7 @@ plt.plot(xpoints, np.array(temp_data[:100 ,4]), label='异常时长')
 
 plt.xticks(xpoints)
 
-plt.xlabel('时间，每步进一个点代表工作10分钟')
+plt.xlabel('时间，每步进一个点代表工作一天')
 plt.legend()
 
 plt.show()
