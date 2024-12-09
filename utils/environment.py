@@ -371,7 +371,7 @@ class data_record:
     def event_mv_output(self, m_environment: environment, output_platform: transfer_table, input_platform: stage) -> None:
         '''触发移车台落车，更新数据'''
         self.LOG.debug(input_platform.get_name() + "从" + output_platform.get_name() + "进了" + str(input_platform.metro.index) + "号" + input_platform.metro.type + "型车")
-        self.total_moving_vehicles_platform_removw_index[m_environment.get_mv_platform_index(output_platform)] += 1
+        # self.total_moving_vehicles_platform_removw_index[m_environment.get_mv_platform_index(output_platform)] += 1
 
     def event_work(self, m_environment: environment) -> None:
         '''触发工作，更新数据'''
